@@ -1,4 +1,4 @@
-package ipfs
+package prueba_ipfs
 
 import (
 	"context"
