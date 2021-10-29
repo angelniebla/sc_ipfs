@@ -175,7 +175,7 @@ func Mkdir(path string) error {
 func initialize(ctx iscp.Sandbox) (dict.Dict, error) {
 	ctx.Log().Debugf("IPFS.init in %s", ctx.Contract().String())
 	params := ctx.Params()
-	val, err := codec.DecodeInt64(params.MustGet(VarCounter), 0)
+	val, err := codec.DecodeInt64(params.MustGet(VarCounter))
 	if err != nil {
 		return nil, fmt.Errorf("IPFS: %v", err)
 	}
