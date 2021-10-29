@@ -176,7 +176,7 @@ func initialize(ctx iscp.Sandbox) (dict.Dict, error) {
 	ctx.Log().Debugf("IPFS.init in %s", ctx.Contract().String())
 	params := ctx.Params()
 	val, err, _ := codec.DecodeInt64(params.MustGet(VarCounter))
-	if err != nil {
+	if !err {
 		return nil, fmt.Errorf("IPFS: %v", err)
 	}
 
