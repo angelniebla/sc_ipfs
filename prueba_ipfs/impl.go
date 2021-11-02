@@ -1,7 +1,5 @@
 package prueba_ipfs
 
-/*
-
 import (
 	"context"
 	"fmt"
@@ -27,7 +25,7 @@ import (
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 )
 
-//var Contract = coreutil.NewContract("IPFS", "IPFS, a PoC smart contract")
+var Contract = coreutil.NewContract("IPFS", "IPFS, a PoC smart contract")
 
 var Processor = Contract.Processor(initialize)
 
@@ -187,5 +185,3 @@ func initialize(ctx iscp.Sandbox) (dict.Dict, error) {
 
 	return nil, nil
 }
-
-*/
