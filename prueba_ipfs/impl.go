@@ -25,7 +25,7 @@ import (
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 )
 
-var Contract = coreutil.NewContract("IPFS", "IPFS, a PoC smart contract")
+//var Contract = coreutil.NewContract("IPFS", "IPFS, a PoC smart contract")
 
 var Processor = Contract.Processor(initialize)
 
