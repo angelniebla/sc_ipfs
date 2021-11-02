@@ -185,3 +185,9 @@ func initialize(ctx iscp.Sandbox) (dict.Dict, error) {
 
 	return nil, nil
 }
+<<<<<<< HEAD
+=======
+
+*/
+
+>>>>>>> fdacd0dccae99333c791b54f2673af5e7306e4c0
