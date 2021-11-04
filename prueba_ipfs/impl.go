@@ -3,7 +3,6 @@ package prueba_ipfs
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 
@@ -14,23 +13,27 @@ import (
 
 	orbitdb "berty.tech/go-orbit-db"
 	"berty.tech/go-orbit-db/iface"
-	config "github.com/ipfs/go-ipfs-config"
-	"github.com/ipfs/go-ipfs/core"
-	ipfsCore "github.com/ipfs/go-ipfs/core"
+	ipfs_core "github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/core/coreapi"
 	mock "github.com/ipfs/go-ipfs/core/mock"
-	"github.com/ipfs/go-ipfs/core/node/libp2p"
-	"github.com/ipfs/go-ipfs/repo/fsrepo"
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 )
 
 var Contract = coreutil.NewContract("IPFS", "IPFS, a PoC smart contract")
 
-var Processor = Contract.Processor(initialize)
+var Processor = Contract.Processor(initialize,
+	FuncGetCounter.WithHandler(getTemp),
+)
+
+var (
+	FuncGetCounter = coreutil.ViewFunc("getTemp")
+)
+
+var o *orbit
 
 const (
-	VarCounter = "counter"
+	VarTemp = "temp"
 )
 
 type orbit struct {
@@ -42,6 +45,8 @@ type orbit struct {
 func testingMockNet(ctx context.Context) mocknet.Mocknet {
 	return mocknet.New(ctx)
 }
+
+/*
 
 // Creates an IPFS node and returns its coreAPI
 func createNode2(ctx context.Context) (icore.CoreAPI, error) {
@@ -58,7 +63,7 @@ func createNode2(ctx context.Context) (icore.CoreAPI, error) {
 
 	// Construct the node
 
-	nodeOptions := &core.BuildCfg{
+	nodeOptions := &ipfs_core.BuildCfg{
 		Online:  true,
 		Routing: libp2p.DHTOption, // This option sets the node to be a full DHT node (both fetching and storing DHT Records)
 		// Routing: libp2p.DHTClientOption, // This option sets the node to be a client DHT node (only fetching records)
@@ -68,7 +73,7 @@ func createNode2(ctx context.Context) (icore.CoreAPI, error) {
 		},
 	}
 
-	node, err := core.NewNode(ctx, nodeOptions)
+	node, err := ipfs_core.NewNode(ctx, nodeOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -98,12 +103,14 @@ func createTempRepo(ctx context.Context) (string, error) {
 	return repoPath, nil
 }
 
+*/
+
 // Creates an IPFS node and returns its coreAPI
 func createNode(ctx context.Context) (icore.CoreAPI, error) {
 
 	// Construct the node
 	m := testingMockNet(ctx)
-	node, err := ipfsCore.NewNode(ctx, &ipfsCore.BuildCfg{
+	node, err := ipfs_core.NewNode(ctx, &ipfs_core.BuildCfg{
 		Online: true,
 		//	Repo: repo,
 		Host: mock.MockHostOption(m),
@@ -120,15 +127,21 @@ func createNode(ctx context.Context) (icore.CoreAPI, error) {
 	return coreapi.NewCoreAPI(node)
 }
 
-func initOrbit(val int64) {
+func constructor() *orbit {
 	o := new(orbit)
+	return o
+}
+
+func initOrbit(val int64) {
+
+	o = new(orbit)
 	path := "/home/angel/db"
 	ctx := context.Background()
 	err := Mkdir(path)
 	if err != nil {
 		fmt.Println("error mkdir")
 	}
-	ipfs, err := createNode2(ctx)
+	ipfs, err := createNode(ctx)
 
 	if err != nil {
 		fmt.Println("new core api error:", err.Error())
@@ -139,19 +152,19 @@ func initOrbit(val int64) {
 		fmt.Println("new orbitdb error:", err.Error())
 	}
 	o.Db = orbit
-	kv, err := orbit.KeyValue(ctx, "userinfo", nil)
+	kv, err := orbit.KeyValue(ctx, "temperatures", nil)
 	if err != nil {
 		fmt.Println("userinfo error:", err.Error())
 	}
 	s := strconv.FormatInt(val, 10)
-	kv.Put(ctx, "a", []byte(s))
-	r, _ := kv.Get(ctx, "a")
-	fmt.Println("Success: ", string(r[:]))
+	kv.Put(ctx, "temp", []byte(s))
+	temp, _ := kv.Get(ctx, "temp")
+	fmt.Println("Success: ", string(temp[:]))
 	o.Kv = kv
 
-	value, _ := kv.Get(ctx, "a")
+	//value, _ := kv.Get(ctx, "a")
 
-	println(string(value))
+	println(string(temp))
 }
 
 func Mkdir(path string) error {
@@ -172,16 +185,54 @@ func Mkdir(path string) error {
 	return nil
 }
 
+/*
+
 func initialize(ctx iscp.Sandbox) (dict.Dict, error) {
 	ctx.Log().Debugf("IPFS.init in %s", ctx.Contract().String())
 	params := ctx.Params()
-	val, err, _ := codec.DecodeInt64(params.MustGet(VarCounter))
-
-	if !err {
+	val, err := codec.DecodeInt64(params.MustGet(VarCounter), 0)
+	if err != nil {
 		return nil, fmt.Errorf("IPFS: %v", err)
 	}
 
 	initOrbit(val)
 
 	return nil, nil
+}
+
+*/
+
+func initialize(ctx iscp.Sandbox) (dict.Dict, error) {
+	ctx.Log().Debugf("ipfs.init in %s", ctx.Contract().String())
+	params := ctx.Params()
+	val, _, err := codec.DecodeInt64(params.MustGet(VarTemp))
+	if err != nil {
+		return nil, fmt.Errorf("ipfs: %v", err)
+	}
+	ctx.State().Set(VarTemp, codec.EncodeInt64(val))
+	ctx.Event(fmt.Sprintf("ipfs.init.success. counter = %d", val))
+
+	initOrbit(val)
+
+	return nil, nil
+}
+
+func getTemp(ctx iscp.SandboxView) (dict.Dict, error) {
+	ret := dict.New()
+
+	ctx2 := context.Background()
+	//kv, err := o.Db.KeyValue(ctx2, "temperatures", nil)
+
+	//s := strconv.FormatInt(18, 10)
+	//kv.Put(ctx2, "tempp", []byte(s))
+
+	temp, _ := o.Kv.Get(ctx2, "temp")
+
+	fmt.Println("Success: ", string(temp[:]))
+
+	i, _ := strconv.ParseInt(string(temp[:]), 10, 64)
+
+	ret.Set(VarTemp, codec.EncodeInt64(i))
+
+	return ret, nil
 }
